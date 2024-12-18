@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>提交练习 - Drill</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .form-container { 
+            background-color: white; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h2 class="mb-4 text-center">创建练习</h2>
+        
+        <div class="text-center mb-3">
+            <button id="randomHistoryBtn" class="btn btn-outline-primary m-1">历史问题</button>
+            <button id="randomBiologyBtn" class="btn btn-outline-success m-1">生物问题</button>
+            <button id="randomGeographyBtn" class="btn btn-outline-warning m-1">地理问题</button>
+            <button id="randomComputerBtn" class="btn btn-outline-danger m-1">计算机问题</button>
+            <button id="randomAllBtn" class="btn btn-outline-secondary m-1">所有问题</button>
+        </div>
+        
+        <form id="drillSubmissionForm">
+            <!-- Question Selection -->
+            <div class="mb-3">
+                <label for="questionSelect" class="form-label">选择问题</label>
+                <select id="questionSelect" class="form-select" required>
+                    <option value="">请选择问题</option>
+                </select>
+            </div>
+
+            <!-- Course Selection -->
+            <div class="mb-3">
+                <label for="courseSelect" class="form-label">课程</label>
+                <select id="courseSelect" class="form-select" required>
+                    <option value="">选择课程</option>
+                    <option value="1">历史</option>
+                    <option value="2">生物</option>
+                    <option value="3">地理</option>
+                    <option value="4">计算机</option>
+                </select>
+            </div>
+
+            <!-- Difficulty Selection -->
+            <div class="mb-3">
+                <label for="difficultySelect" class="form-label">难度</label>
+                <select id="difficultySelect" class="form-select" required>
+                    <option value="">选择难度</option>
+                    <option value="easy">简单</option>
+                    <option value="medium">中等</option>
+                    <option value="hard">困难</option>
+                </select>
+            </div>
+
+            <!-- Submission Button -->
+            <div class="text-center">
+                <button type="submit" class="btn btn-primary">提交练习</button>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+        // Supabase configuration
+        const SUPABASE_URL = 'https://tkcrnfgnspvtzwbbvyfv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrY3JuZmduc3B2dHp3YmJ2eWZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA5ODgwMTgsImV4cCI6MjA0NjU2NDAxOH0.o4kZY3X0XxcpM3OHO3yw7O3of2PPtXdQ4CBFgp3CMO8';
+
+        // Initialize Supabase client
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Course mapping
+        const courseMap = {
+            1: '历史',
+            2: '生物', 
+            3: '地理',
+            4: '计算机'
+        };
+
+        // Function to fetch and populate questions
+        async function fetchQuestions(courseId = null) {
+            try {
+                let query = supabase.from('questions').select('*');
+                
+                if (courseId) {
+                    query = query.eq('course_id', courseId);
+                }
+
+                const { data, error } = await query.order('id', { ascending: false });
+
+                if (error) throw error;
+
+                const questionSelect = document.getElementById('questionSelect');
+                questionSelect.innerHTML = '<option value="">请选择问题</option>';
+
+                data.forEach(question => {
+                    const option = document.createElement('option');
+                    option.value = question.id;
+                    option.textContent = `${courseMap[question.course_id]} - ${question.question}`;
+                    questionSelect.appendChild(option);
+                });
+            } catch (err) {
+                console.error('获取问题列表失败:', err);
+                alert('获取问题列表时发生错误: ' + err.message);
+            }
+        }
+
+        // Event listeners for course-specific question buttons
+        document.getElementById('randomHistoryBtn').addEventListener('click', () => fetchQuestions(1));
+        document.getElementById('randomBiologyBtn').addEventListener('click', () => fetchQuestions(2));
+        document.getElementById('randomGeographyBtn').addEventListener('click', () => fetchQuestions(3));
+        document.getElementById('randomComputerBtn').addEventListener('click', () => fetchQuestions(4));
+        document.getElementById('randomAllBtn').addEventListener('click', () => fetchQuestions());
+
+        // Form Submission
+        document.getElementById('drillSubmissionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const questionId = document.getElementById('questionSelect').value;
+            const courseId = document.getElementById('courseSelect').value;
+            const difficulty = document.getElementById('difficultySelect').value;
+
+            try {
+                const { data, error } = await supabase
+                    .from('drill')
+                    .insert([
+                        { 
+                            course_id: parseInt(courseId), 
+                            question_id: parseInt(questionId),
+                            difficulty: difficulty
+                        }
+                    ]);
+
+                if (error) {
+                    console.error('Error submitting drill:', error);
+                    alert('提交练习失败: ' + error.message);
+                    return;
+                }
+
+                alert('练习提交成功!');
+                e.target.reset();
+            } catch (err) {
+                console.error('Unexpected error:', err);
+                alert('提交练习时发生意外错误');
+            }
+        });
+
+        // Populate all questions on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchQuestions();
+        });
+    </script>
+</body>
+</html>

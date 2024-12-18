@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>政治问题集</title>
+    <link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>政治问题集</h1>
+            <nav>
+                <a href="index.html">首页</a>
+                <a href="geography_questions.html">地理问题</a>
+                <a href="politics_questions.html" class="active">政治问题</a>
+            </nav>
+        </header>
+
+        <main>
+            <section id="politicsQuestionsSection">
+                <h2>所有政治问题</h2>
+                <div id="politicsQuestionsList" class="questions-grid">
+                    <!-- Questions will be dynamically loaded here -->
+                </div>
+            </section>
+
+            <section id="questionDetailsModal" class="modal">
+                <div class="modal-content">
+                    <span class="close-btn" onclick="closeQuestionDetailsModal()">&times;</span>
+                    <div id="questionDetailsContent"></div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 问题学习平台</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="src/script.js"></script>
+    <script src="src/politics_questions.js"></script>
+</body>
+</html>

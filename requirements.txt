@@ -1,0 +1,5 @@
+supabase==1.0.3
+sqlalchemy==2.0.21
+
+# Optional: for easier database interactions
+python-dotenv==1.0.0

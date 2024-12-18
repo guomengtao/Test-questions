@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>提交答案 - 课程问答系统</title>
+    
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+    <style>
+        body {
+            background-color: #f4f6f9;
+            font-family: 'Arial', sans-serif;
+        }
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2 class="text-center mb-4">
+            <i class="bi bi-pencil-square me-2"></i>提交答案
+        </h2>
+
+        <div class="text-center mb-3">
+            <button id="randomGeographyQuestionBtn" class="btn btn-outline-warning ms-2">随机地理问题并填充</button>
+        </div>
+
+        <form id="answerSubmissionForm">
+            <!-- Question Selection -->
+            <div class="mb-3">
+                <label for="questionSelect" class="form-label">选择问题</label>
+                <select id="questionSelect" class="form-select" required>
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+
+            <!-- Answer Textarea -->
+            <div class="mb-3">
+                <label for="answerTextarea" class="form-label">你的答案</label>
+                <textarea 
+                    id="answerTextarea" 
+                    class="form-control" 
+                    rows="5" 
+                    placeholder="在此输入你的详细答案"
+                    required
+                ></textarea>
+            </div>
+
+            <!-- Difficulty and Score -->
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="difficultySelect" class="form-label">难度</label>
+                    <select id="difficultySelect" class="form-select">
+                        <option value="easy">简单</option>
+                        <option value="medium" selected>中等</option>
+                        <option value="hard">困难</option>
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="scoreInput" class="form-label">预期分数</label>
+                    <input 
+                        type="number" 
+                        id="scoreInput" 
+                        class="form-control" 
+                        min="0" 
+                        max="10" 
+                        value="5"
+                    >
+                </div>
+            </div>
+
+            <!-- Evaluation Status -->
+            <div class="mb-3">
+                <label for="evaluationStatusSelect" class="form-label">评估状态</label>
+                <select id="evaluationStatusSelect" class="form-select">
+                    <option value="pending" selected>待审核</option>
+                    <option value="reviewed">已审核</option>
+                    <option value="graded">已评分</option>
+                </select>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-send me-2"></i>提交答案
+                </button>
+            </div>
+        </form>
+
+        <!-- Error/Success Alert -->
+        <div id="alertContainer" class="mt-3"></div>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Hardcoded sample questions
+            const sampleQuestions = [
+                { id: '1', question: '解释面向对象编程的基本概念', course_id: '计算机科学' },
+                { id: '2', question: '什么是数据库事务的ACID特性', course_id: '数据库系统' },
+                { id: '3', question: '描述网络分层模型的各个层次', course_id: '计算机网络' },
+                { id: '4', question: '解释机器学习中的监督学习和非监督学习', course_id: '人工智能' },
+                { id: '5', question: '简述HTTP和HTTPS的主要区别', course_id: '网络安全' }
+            ];
+
+            // Function to populate question select
+            function populateQuestions() {
+                const questionSelect = document.getElementById('questionSelect');
+                
+                // Clear existing options
+                questionSelect.innerHTML = '<option value="">选择一个问题</option>';
+
+                // Populate questions
+                sampleQuestions.forEach(q => {
+                    const option = document.createElement('option');
+                    option.value = q.id;
+                    option.textContent = `${q.question} (课程: ${q.course_id})`;
+                    questionSelect.appendChild(option);
+                });
+            }
+
+            // Populate questions on page load
+            populateQuestions();
+
+            // Supabase Configuration (minimal setup)
+            const SUPABASE_URL = 'https://tkcrnfgnspvtzwbbvyfv.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrY3JuZmduc3B2dHp3YmJ2eWZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA5ODgwMTgsImV4cCI6MjA0NjU2NDAxOH0.o4kZY3X0XxcpM3OHO3yw7O3of2PPtXdQ4CBFgp3CMO8';
+
+            // Initialize Supabase client
+            const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+            // Function to fetch random questions
+            async function fetchRandomQuestions(courseName = null) {
+                // Ensure courseName is a string and not an event
+                if (courseName && typeof courseName !== 'string') {
+                    courseName = courseName.target ? courseName.target.textContent : null;
+                }
+
+                try {
+                    // Prepare query
+                    let query = supabase
+                        .from('questions')
+                        .select('*, course_id(name)');
+                    
+                    // Add course filter if specified
+                    if (courseName) {
+                        query = query.eq('course_id.name', courseName);
+                    }
+
+                    // Fetch random question
+                    const { data, error } = await query
+                        .order('id', { ascending: false })  // Use a different approach for randomization
+                        .limit(1)
+                        .single();
+
+                    if (error) throw error;
+
+                    // Validate data before accessing
+                    if (!data || !data.course_id) {
+                        throw new Error('No question data found');
+                    }
+
+                    // Populate question select
+                    const questionSelect = document.getElementById('questionSelect');
+                    const option = document.createElement('option');
+                    option.value = data.id;
+                    option.textContent = `${data.question} (课程: ${data.course_id.name})`;
+                    option.selected = true;
+
+                    // Clear previous options and add new one
+                    questionSelect.innerHTML = '';
+                    questionSelect.appendChild(option);
+
+                } catch (err) {
+                    console.error('获取随机问题失败:', err);
+                    
+                    // Fallback method for randomization if the first method fails
+                    try {
+                        // First, get the course ID if a course name is provided
+                        let courseFilter = {};
+                        if (courseName) {
+                            const { data: courseData, error: courseError } = await supabase
+                                .from('courses')
+                                .select('id')
+                                .eq('name', courseName)
+                                .single();
+
+                            if (courseError) throw courseError;
+                            courseFilter = { course_id: courseData.id };
+                        }
+
+                        // Fetch all questions
+                        const { data: allQuestions, error: fetchError } = await supabase
+                            .from('questions')
+                            .select('*, course_id(name)')
+                            .match(courseFilter);
+
+                        if (fetchError) throw fetchError;
+
+                        if (allQuestions.length === 0) {
+                            alert('没有找到相关课程的问题');
+                            return;
+                        }
+
+                        // Manually randomize
+                        const randomIndex = Math.floor(Math.random() * allQuestions.length);
+                        const randomQuestion = allQuestions[randomIndex];
+
+                        // Validate randomQuestion before accessing
+                        if (!randomQuestion || !randomQuestion.course_id) {
+                            throw new Error('No random question found');
+                        }
+
+                        // Populate question select
+                        const questionSelect = document.getElementById('questionSelect');
+                        const option = document.createElement('option');
+                        option.value = randomQuestion.id;
+                        option.textContent = `${randomQuestion.question} (课程: ${randomQuestion.course_id.name})`;
+                        option.selected = true;
+
+                        // Clear previous options and add new one
+                        questionSelect.innerHTML = '';
+                        questionSelect.appendChild(option);
+
+                    } catch (fallbackError) {
+                        console.error('获取随机问题失败（备用方法）:', fallbackError);
+                        alert('获取随机问题失败：' + (fallbackError.message || '未知错误'));
+                    }
+                }
+            }
+
+            // Add event listeners to course buttons
+            document.querySelectorAll('.course-random-btn').forEach(btn => {
+                btn.addEventListener('click', (event) => {
+                    const courseName = event.target.textContent.trim();
+                    fetchRandomQuestions(courseName);
+                });
+            });
+
+            // Function to fetch a random Geography question
+            async function fetchRandomGeographyQuestion() {
+                try {
+                    const { data, error } = await supabase
+                        .from('questions')
+                        .select('*')
+                        .eq('course_id', 3)
+                        .order('id', { ascending: false });
+
+                    if (error) {
+                        console.error('Error fetching random Geography question:', error);
+                        return null;
+                    }
+
+                    // If questions exist, return a random question
+                    if (data && data.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * data.length);
+                        return data[randomIndex];
+                    }
+
+                    return null;
+                } catch (err) {
+                    console.error('Unexpected error:', err);
+                    return null;
+                }
+            }
+
+            // Add random Geography question and auto-fill button
+            const randomGeographyQuestionBtn = document.createElement('button');
+            randomGeographyQuestionBtn.id = 'randomGeographyQuestionBtn';
+            randomGeographyQuestionBtn.className = 'btn btn-outline-warning ms-2';
+            randomGeographyQuestionBtn.textContent = '随机地理问题并填充';
+            randomGeographyQuestionBtn.addEventListener('click', async () => {
+                const randomQuestion = await fetchRandomGeographyQuestion();
+
+                if (randomQuestion) {
+                    // Populate question select
+                    const questionSelect = document.getElementById('questionSelect');
+                    const option = document.createElement('option');
+                    option.value = randomQuestion.id;
+                    option.textContent = `${randomQuestion.title} (地理)`;
+                    option.selected = true;
+
+                    // Clear previous options and add new one
+                    questionSelect.innerHTML = '';
+                    questionSelect.appendChild(option);
+
+                    // Auto-fill answer textarea
+                    const answerTextarea = document.getElementById('answerTextarea');
+                    answerTextarea.value = generateRandomGeographyAnswer(randomQuestion.title);
+
+                    // Set difficulty to medium by default
+                    const difficultySelect = document.getElementById('difficultySelect');
+                    difficultySelect.value = 'medium';
+
+                    // Set score to 7 (slightly above average)
+                    const scoreInput = document.getElementById('scoreInput');
+                    scoreInput.value = 7;
+
+                    // Scroll to the question select
+                    questionSelect.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert('没有找到地理问题');
+                }
+            });
+
+            // Add the button to the form
+            const formContainer = document.querySelector('.container');
+            const formElement = document.getElementById('answerSubmissionForm');
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'text-center mb-3';
+            buttonContainer.appendChild(randomGeographyQuestionBtn);
+            formContainer.insertBefore(buttonContainer, formElement);
+
+            // Form submission
+            document.getElementById('answerSubmissionForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                // Get form values
+                const questionSelect = document.getElementById('questionSelect');
+                const answerTextarea = document.getElementById('answerTextarea');
+                const difficultySelect = document.getElementById('difficultySelect');
+                const scoreInput = document.getElementById('scoreInput');
+                const evaluationStatusSelect = document.getElementById('evaluationStatusSelect');
+
+                // Validate question selection
+                if (!questionSelect.value) {
+                    alert('请选择一个问题');
+                    return;
+                }
+
+                // Validate answer
+                if (!answerTextarea.value.trim()) {
+                    alert('请输入答案');
+                    return;
+                }
+
+                try {
+                    // Submit answer
+                    const { data: newAnswer, error } = await supabase
+                        .from('answer_list')
+                        .insert({
+                            question_id: questionSelect.value,
+                            answer_text: answerTextarea.value,
+                            user_id: null,
+                            submission_time: new Date().toISOString(),
+                            difficulty_level: difficultySelect.value,
+                            evaluation_status: evaluationStatusSelect.value,
+                            score: parseInt(scoreInput.value, 10)
+                        })
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+
+                    // Show success message
+                    alert('答案提交成功！');
+
+                    // Reset form after successful submission
+                    questionSelect.selectedIndex = 0;
+                    answerTextarea.value = '';
+                    difficultySelect.selectedIndex = 1; // medium
+                    scoreInput.value = 5;
+                    evaluationStatusSelect.selectedIndex = 0; // pending
+
+                } catch (err) {
+                    console.error('提交答案失败:', err);
+                    alert('提交答案失败：' + (err.message || '未知错误'));
+                }
+            });
+
+            // Random fill button functionality
+            const randomFillBtn = document.createElement('button');
+            randomFillBtn.type = 'button';
+            randomFillBtn.className = 'btn btn-secondary mt-2';
+            randomFillBtn.innerHTML = '<i class="bi bi-magic me-2"></i>随机填充';
+            randomFillBtn.addEventListener('click', async () => {
+                // Fetch random question
+                await fetchRandomQuestions();
+
+                // Generate random answer
+                const answerTextarea = document.getElementById('answerTextarea');
+                answerTextarea.value = generateRandomAnswer(document.getElementById('questionSelect').options[document.getElementById('questionSelect').selectedIndex].text);
+
+                // Random difficulty
+                const difficultySelect = document.getElementById('difficultySelect');
+                difficultySelect.selectedIndex = Math.floor(Math.random() * difficultySelect.options.length);
+
+                // Random score
+                const scoreInput = document.getElementById('scoreInput');
+                scoreInput.value = Math.floor(Math.random() * 11);
+
+                // Random evaluation status
+                const evaluationStatusSelect = document.getElementById('evaluationStatusSelect');
+                evaluationStatusSelect.selectedIndex = Math.floor(Math.random() * evaluationStatusSelect.options.length);
+            });
+            document.querySelector('form').insertBefore(randomFillBtn, document.querySelector('form').firstChild);
+
+            // Function to generate random answer
+            function generateRandomAnswer(questionText) {
+                const randomPhrases = [
+                    '根据我的理解，',
+                    '经过深入分析，',
+                    '从多个角度来看，',
+                    '综合考虑后，'
+                ];
+
+                const randomTopics = [
+                    '这个问题涉及到复杂的概念和多个层面的理解。',
+                    '解决这个问题需要全面的思考和系统的方法。',
+                    '问题本身蕴含着深层次的知识和洞察。'
+                ];
+
+                const randomConclusions = [
+                    '总的来说，这是一个需要深入探讨的话题。',
+                    '最终，答案可能因具体情境而有所不同。',
+                    '因此，我们需要保持开放和批判性思维。'
+                ];
+
+                return `${randomPhrases[Math.floor(Math.random() * randomPhrases.length)]}
+关于问题："${questionText}"
+
+${randomTopics[Math.floor(Math.random() * randomTopics.length)]}
+
+关键点：
+1. 初步理解问题的核心要义
+2. 分析可能的不同视角
+3. 提供一个相对全面的解答
+
+${randomConclusions[Math.floor(Math.random() * randomConclusions.length)]}`;
+            }
+
+            // Function to generate random Geography answer
+            function generateRandomGeographyAnswer(questionText) {
+                const randomTopics = [
+                    '地理地貌',
+                    '气候特征',
+                    '自然资源分布',
+                    '地理环境变化',
+                    '地理区位优势'
+                ];
+
+                const randomPhrases = [
+                    '根据地理学研究，',
+                    '通过对地理环境的深入分析，',
+                    '从地理学角度来看，',
+                    '结合地理学基本原理，'
+                ];
+
+                return `关于问题："${questionText}"
+
+${randomPhrases[Math.floor(Math.random() * randomPhrases.length)]}
+
+关键点：
+1. ${randomTopics[Math.floor(Math.random() * randomTopics.length)]}
+2. 地理因素的系统性影响
+3. 区域特征与环境互动
+
+详细阐述：
+地理环境是一个复杂的系统，涉及多个相互关联的因素。本答案从宏观和微观角度探讨了地理学的核心问题，强调了环境、资源和人类活动之间的密切联系。`;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!-- Top Navigation Bar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="index.html">
+            <i class="bi bi-book me-2"></i>课程管理系统
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNavbar">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <!-- Courses Dropdown -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-journal-text me-1"></i>课程
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="all-questions.html">
+                            <i class="bi bi-globe me-1"></i>全部问题
+                        </a></li>
+                        <li class="dropdown-submenu">
+                            <a class="dropdown-item dropdown-toggle" href="#">
+                                <i class="bi bi-book-half me-1"></i>学科
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="history-questions.html">历史</a></li>
+                                <li><a class="dropdown-item" href="biology-questions.html">生物</a></li>
+                                <li><a class="dropdown-item" href="#">地理</a></li>
+                                <li><a class="dropdown-item" href="#">政治</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+
+                <!-- Tools Dropdown -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-tools me-1"></i>工具
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="manage-questions.html">
+                            <i class="bi bi-pencil-square me-1"></i>问题管理
+                        </a></li>
+                        <li><a class="dropdown-item" href="answer-list.html">
+                            <i class="bi bi-list-check me-1"></i>答案列表
+                        </a></li>
+                        <li><a class="dropdown-item" href="sitemap.html">
+                            <i class="bi bi-diagram-3 me-1"></i>站点地图
+                        </a></li>
+                        <li><a class="dropdown-item" href="course-statistics.html">
+                            <i class="bi bi-graph-up me-1"></i>课程统计
+                        </a></li>
+                    </ul>
+                </li>
+            </ul>
+
+            <!-- Search and User Actions -->
+            <form class="d-flex">
+                <input class="form-control me-2" type="search" placeholder="搜索问题" aria-label="Search">
+                <button class="btn btn-outline-light" type="submit">搜索</button>
+            </form>
+        </div>
+    </div>
+</nav>
+
+<!-- Left Sidebar -->
+<div class="container-fluid">
+    <div class="row">
+        <nav id="sidebar" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+            <div class="position-sticky pt-3">
+                <ul class="nav flex-column">
+                    <!-- Courses Section -->
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="collapse" href="#courseSubmenu">
+                            <i class="bi bi-journal-text me-2"></i>课程
+                        </a>
+                        <ul class="collapse" id="courseSubmenu">
+                            <li class="nav-item">
+                                <a class="nav-link" href="all-questions.html">全部问题</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="collapse" href="#subjectSubmenu">学科</a>
+                                <ul class="collapse" id="subjectSubmenu">
+                                    <li><a class="nav-link" href="history-questions.html">历史</a></li>
+                                    <li><a class="nav-link" href="biology-questions.html">生物</a></li>
+                                    <li><a class="nav-link" href="#">地理</a></li>
+                                    <li><a class="nav-link" href="#">政治</a></li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </li>
+
+                    <!-- Tools Section -->
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="collapse" href="#toolsSubmenu">
+                            <i class="bi bi-tools me-2"></i>工具
+                        </a>
+                        <ul class="collapse" id="toolsSubmenu">
+                            <li><a class="nav-link" href="manage-questions.html">问题管理</a></li>
+                            <li><a class="nav-link" href="answer-list.html">答案列表</a></li>
+                            <li><a class="nav-link" href="sitemap.html">站点地图</a></li>
+                            <li><a class="nav-link" href="course-statistics.html">课程统计</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="bg-dark text-white py-4 mt-4">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4">
+                <h5>课程</h5>
+                <ul class="list-unstyled">
+                    <li><a href="all-questions.html" class="text-white">全部问题</a></li>
+                    <li><a href="history-questions.html" class="text-white">历史</a></li>
+                    <li><a href="biology-questions.html" class="text-white">生物</a></li>
+                    <li><a href="#" class="text-white">地理</a></li>
+                    <li><a href="#" class="text-white">政治</a></li>
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <h5>工具</h5>
+                <ul class="list-unstyled">
+                    <li><a href="manage-questions.html" class="text-white">问题管理</a></li>
+                    <li><a href="answer-list.html" class="text-white">答案列表</a></li>
+                    <li><a href="sitemap.html" class="text-white">站点地图</a></li>
+                    <li><a href="course-statistics.html" class="text-white">课程统计</a></li>
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <h5>关于</h5>
+                <p>课程管理系统 - 提供全面的学习资源和问题管理平台</p>
+                <p> 2024 课程管理系统. 保留所有权利.</p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- Custom CSS for Multi-level Dropdowns -->
+<style>
+    .dropdown-submenu {
+        position: relative;
+    }
+    .dropdown-submenu .dropdown-menu {
+        top: 0;
+        left: 100%;
+        margin-top: -1px;
+    }
+    .sidebar .nav-link {
+        color: #333;
+    }
+    .sidebar .nav-link:hover {
+        color: #007bff;
+    }
+</style>
+
+<!-- Additional JavaScript for Dropdown Functionality -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Multi-level dropdown functionality
+        document.querySelectorAll('.dropdown-menu a.dropdown-toggle').forEach(function(element) {
+            element.addEventListener('click', function(e) {
+                var nextEl = this.nextElementSibling;
+                if(nextEl && nextEl.classList.contains('dropdown-menu')) {
+                    e.preventDefault();
+                    nextEl.classList.toggle('show');
+                }
+            });
+        });
+    });
+</script>

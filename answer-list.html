@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>答案列表 - 课程问答系统</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f4f6f9;
+            font-family: 'Arial', sans-serif;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .table-responsive {
+            margin-top: 20px;
+        }
+        .table thead {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: rgba(76, 175, 80, 0.05);
+        }
+        .table-hover tbody tr:hover {
+            background-color: rgba(76, 175, 80, 0.1);
+        }
+        .filter-section {
+            margin-bottom: 20px;
+        }
+        #loadingSpinner {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+        .pagination {
+            justify-content: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="totalAnswersCount"></div>
+        <div id="totalQuestionsCount"></div>
+        <div id="totalAnswerListCount"></div>
+        <div id="todaysCounts"></div>
+        <div id="courseSpecificCounts"></div>
+        <div class="row mb-3">
+            <div class="col">
+                <button id="showRandomQuestionBtn" class="btn btn-info me-2">
+                    随机显示一个问题
+                </button>
+                
+                <!-- Course-specific random question buttons -->
+                <div class="btn-group mt-2" role="group" aria-label="课程随机问题">
+                    <button id="geographyRandomBtn" class="btn btn-outline-success course-random-btn" data-course="Geography">
+                        <i class="bi bi-globe me-1"></i>地理
+                    </button>
+                    <button id="historyRandomBtn" class="btn btn-outline-primary course-random-btn" data-course="History">
+                        <i class="bi bi-book me-1"></i>历史
+                    </button>
+                    <button id="biologyRandomBtn" class="btn btn-outline-warning course-random-btn" data-course="Biology">
+                        <i class="bi bi-dna me-1"></i>生物
+                    </button>
+                    <button id="politicsRandomBtn" class="btn btn-outline-danger course-random-btn" data-course="Politics">
+                        <i class="bi bi-building me-1"></i>政治
+                    </button>
+                </div>
+            </div>
+        </div>
+        <h1 class="text-center mb-4">答案列表</h1>
+
+        <!-- Filter Section -->
+        <div class="row filter-section">
+            <div class="col-md-4">
+                <select id="courseFilter" class="form-select">
+                    <option value="">所有课程</option>
+                    <!-- Course options will be dynamically populated -->
+                </select>
+            </div>
+            <div class="col-md-4">
+                <select id="difficultyFilter" class="form-select">
+                    <option value="">所有难度</option>
+                    <option value="easy">简单</option>
+                    <option value="medium">中等</option>
+                    <option value="hard">困难</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <select id="evaluationStatusFilter" class="form-select">
+                    <option value="">所有评价状态</option>
+                    <option value="pending">待评价</option>
+                    <option value="reviewed">已审阅</option>
+                    <option value="graded">已评分</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="text-center">
+            <div class="spinner-border text-success" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+        </div>
+
+        <!-- Answers Table -->
+        <div class="table-responsive">
+            <table id="answersTable" class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>问题</th>
+                        <th>答案内容</th>
+                        <th>课程</th>
+                        <th>难度</th>
+                        <th>提交时间</th>
+                        <th>评价状态</th>
+                        <th>分数</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="answersTableBody">
+                    <!-- Table rows will be dynamically populated -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <nav aria-label="答案分页">
+            <ul id="paginationControls" class="pagination">
+                <!-- Pagination buttons will be dynamically populated -->
+            </ul>
+        </nav>
+    </div>
+
+    <!-- Modal for Answer Details -->
+    <div class="modal fade" id="answerDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">答案详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="answerDetailsModalBody">
+                    <!-- Modal content will be dynamically populated -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Random Question Modal -->
+    <div class="modal fade" id="randomQuestionModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">随机问题</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="randomQuestionModalBody" class="mb-3">
+                        <!-- Random question will be inserted here -->
+                    </div>
+                    
+                    <form id="randomQuestionAnswerForm">
+                        <div class="mb-3">
+                            <label for="answerTextarea" class="form-label">你的答案</label>
+                            <textarea 
+                                id="answerTextarea" 
+                                class="form-control" 
+                                rows="5" 
+                                placeholder="在此输入你的答案"
+                                required
+                            ></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="difficultySelect" class="form-label">难度</label>
+                                <select id="difficultySelect" class="form-select">
+                                    <option value="easy">简单</option>
+                                    <option value="medium" selected>中等</option>
+                                    <option value="hard">困难</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="scoreInput" class="form-label">预期分数</label>
+                                <input 
+                                    type="number" 
+                                    id="scoreInput" 
+                                    class="form-control" 
+                                    min="0" 
+                                    max="10" 
+                                    value="5"
+                                >
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button id="submitRandomQuestionAnswer" type="button" class="btn btn-primary">提交答案</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    
+    <!-- Custom Script -->
+    <script>
+        // Global debug and error handling functions
+        function debugLog(message, data) {
+            console.log(`🔍 DEBUG: ${message}`, data);
+        }
+
+        function handleSupabaseError(errorMessage, error) {
+            console.error(`❌ Supabase Error: ${errorMessage}`, error);
+            
+            // Display error to user
+            const errorContainer = document.getElementById('errorContainer');
+            if (errorContainer) {
+                errorContainer.innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        <strong>Connection Error:</strong> ${errorMessage}
+                        <br>
+                        <small>Please check your network connection or contact support.</small>
+                    </div>
+                `;
+                errorContainer.style.display = 'block';
+            }
+        }
+
+        // Wait for Supabase library to load
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Supabase Configuration
+            const SUPABASE_URL = 'https://tkcrnfgnspvtzwbbvyfv.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrY3JuZmduc3B2dHp3YmJ2eWZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA5ODgwMTgsImV4cCI6MjA0NjU2NDAxOH0.o4kZY3X0XxcpM3OHO3yw7O3of2PPtXdQ4CBFgp3CMO8';
+
+            // Ensure Supabase is available before creating client
+            if (window.supabase && window.supabase.createClient) {
+                try {
+                    // Create Supabase client
+                    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                    debugLog('Supabase client created successfully', { url: SUPABASE_URL });
+
+                    // Pagination and Filtering
+                    let currentPage = 1;
+                    const itemsPerPage = 10;
+                    let totalAnswers = 0;
+                    let filteredAnswers = [];
+
+                    // Function to fetch answers with optional filters
+                    async function fetchAnswers(courseId = null, difficulty = null, evaluationStatus = null) {
+                        try {
+                            debugLog('Fetching answers with filters', { courseId, difficulty, evaluationStatus });
+
+                            // Start with base query
+                            let query = supabase
+                                .from('answer_list')
+                                .select(`
+                                    id, 
+                                    answer_text, 
+                                    submission_time, 
+                                    difficulty_level, 
+                                    evaluation_status, 
+                                    score,
+                                    questions (question, course_id)
+                                `)
+                                .order('submission_time', { ascending: false });
+
+                            // Apply filters
+                            if (courseId) {
+                                query = query.eq('questions.course_id', courseId);
+                            }
+                            if (difficulty) {
+                                query = query.eq('difficulty_level', difficulty);
+                            }
+                            if (evaluationStatus) {
+                                query = query.eq('evaluation_status', evaluationStatus);
+                            }
+
+                            // Execute query
+                            const { data, error, count } = await query;
+
+                            if (error) {
+                                handleSupabaseError('Error fetching answers', error);
+                                return [];
+                            }
+
+                            // Fetch course names separately if needed
+                            if (data && data.length > 0) {
+                                const courseIds = [...new Set(data.map(answer => 
+                                    answer.questions?.course_id
+                                ).filter(Boolean))];
+
+                                if (courseIds.length > 0) {
+                                    const { data: coursesData, error: coursesError } = await supabase
+                                        .from('courses')
+                                        .select('id, name')
+                                        .in('id', courseIds);
+
+                                    if (coursesError) {
+                                        console.warn('Error fetching course names', coursesError);
+                                    } else {
+                                        // Map course names to answers
+                                        const courseMap = Object.fromEntries(
+                                            coursesData.map(course => [course.id, course.name])
+                                        );
+
+                                        data.forEach(answer => {
+                                            if (answer.questions?.course_id) {
+                                                answer.course_name = courseMap[answer.questions.course_id] || 'N/A';
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+
+                            debugLog('Answers fetched successfully', { count: data?.length });
+                            return data || [];
+                        } catch (err) {
+                            handleSupabaseError('Unexpected error fetching answers', err);
+                            return [];
+                        }
+                    }
+
+                    // Function to render answers table
+                    function renderAnswersTable(answers) {
+                        const tableBody = document.getElementById('answersTableBody');
+                        tableBody.innerHTML = ''; // Clear existing rows
+
+                        answers.forEach(answer => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${answer.id}</td>
+                                <td>${answer.questions?.question || 'N/A'}</td>
+                                <td>${truncateText(answer.answer_text, 50)}</td>
+                                <td>${answer.course_name || 'N/A'}</td>
+                                <td>${getDifficultyLabel(answer.difficulty_level)}</td>
+                                <td>${new Date(answer.submission_time).toLocaleString()}</td>
+                                <td>${getEvaluationStatusLabel(answer.evaluation_status)}</td>
+                                <td>${answer.score || 'N/A'}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" onclick="showAnswerDetails(${answer.id})">查看详情</button>
+                                </td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                    }
+
+                    // Helper function to truncate text
+                    function truncateText(text, maxLength) {
+                        return text.length > maxLength 
+                            ? text.substring(0, maxLength) + '...' 
+                            : text;
+                    }
+
+                    // Helper function to get difficulty label
+                    function getDifficultyLabel(difficulty) {
+                        const labels = {
+                            'easy': '简单',
+                            'medium': '中等',
+                            'hard': '困难'
+                        };
+                        return labels[difficulty] || difficulty;
+                    }
+
+                    // Helper function to get evaluation status label
+                    function getEvaluationStatusLabel(status) {
+                        const labels = {
+                            'pending': '待评价',
+                            'reviewed': '已审阅',
+                            'graded': '已评分'
+                        };
+                        return labels[status] || status;
+                    }
+
+                    // Function to show full answer details
+                    async function showAnswerDetails(answerId) {
+                        try {
+                            const { data, error } = await supabase
+                                .from('answer_list')
+                                .select(`
+                                    *,
+                                    questions (question, course_id),
+                                    courses (name as course_name)
+                                `)
+                                .eq('id', answerId)
+                                .single();
+
+                            if (error) {
+                                handleSupabaseError('Error fetching answer details', error);
+                                return;
+                            }
+
+                            const modalBody = document.getElementById('answerDetailsModalBody');
+                            modalBody.innerHTML = `
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>问题：</strong> ${data.questions.question}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>课程：</strong> ${data.courses.course_name}
+                                    </div>
+                                </div>
+                                <hr>
+                                <div>
+                                    <strong>答案内容：</strong>
+                                    <p>${data.answer_text}</p>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-md-4">
+                                        <strong>难度：</strong> ${getDifficultyLabel(data.difficulty_level)}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>评价状态：</strong> ${getEvaluationStatusLabel(data.evaluation_status)}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>分数：</strong> ${data.score || 'N/A'}
+                                    </div>
+                                </div>
+                            `;
+
+                            // Show modal
+                            const answerDetailsModal = new bootstrap.Modal(document.getElementById('answerDetailsModal'));
+                            answerDetailsModal.show();
+                        } catch (err) {
+                            handleSupabaseError('Unexpected error showing answer details', err);
+                        }
+                    }
+
+                    // Function to populate course filter
+                    async function populateCourseFilter() {
+                        try {
+                            const { data, error } = await supabase
+                                .from('courses')
+                                .select('id, name');
+
+                            if (error) {
+                                handleSupabaseError('Error fetching courses', error);
+                                return;
+                            }
+
+                            const courseFilter = document.getElementById('courseFilter');
+                            courseFilter.innerHTML = '<option value="">所有课程</option>'; // Reset and add default option
+                            data.forEach(course => {
+                                const option = document.createElement('option');
+                                option.value = course.id;
+                                option.textContent = course.name;
+                                courseFilter.appendChild(option);
+                            });
+                        } catch (err) {
+                            handleSupabaseError('Unexpected error populating course filter', err);
+                        }
+                    }
+
+                    // Event listeners for filters
+                    document.getElementById('courseFilter').addEventListener('change', applyFilters);
+                    document.getElementById('difficultyFilter').addEventListener('change', applyFilters);
+                    document.getElementById('evaluationStatusFilter').addEventListener('change', applyFilters);
+
+                    // Function to apply filters
+                    async function applyFilters() {
+                        const courseId = document.getElementById('courseFilter').value;
+                        const difficulty = document.getElementById('difficultyFilter').value;
+                        const evaluationStatus = document.getElementById('evaluationStatusFilter').value;
+
+                        const loadingSpinner = document.getElementById('loadingSpinner');
+                        loadingSpinner.style.display = 'flex';
+
+                        try {
+                            const answers = await fetchAnswers(
+                                courseId || null, 
+                                difficulty || null, 
+                                evaluationStatus || null
+                            );
+
+                            loadingSpinner.style.display = 'none';
+                            renderAnswersTable(answers);
+                        } catch (err) {
+                            handleSupabaseError('Error applying filters', err);
+                            loadingSpinner.style.display = 'none';
+                        }
+                    }
+
+                    // Add a login check function
+                    async function checkAndHandleLogin() {
+                        const { data: { user }, error } = await supabase.auth.getUser();
+                        
+                        if (error || !user) {
+                            // Prompt user to log in
+                            debugLog('需要登录', 'Redirecting to login');
+                            
+                            // Option 1: Redirect to login page
+                            window.location.href = 'login.html';
+                            
+                            // Option 2: Show login modal (if you prefer)
+                            // const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                            // loginModal.show();
+                            
+                            return null;
+                        }
+                        
+                        return user;
+                    }
+
+                    let currentRandomQuestionId = null;
+                    // Function to show a random question
+                    async function showRandomQuestion(courseName = null) {
+                        // Ensure courseName is a string and not an event
+                        if (courseName && typeof courseName !== 'string') {
+                            courseName = courseName.target ? courseName.target.textContent : null;
+                        }
+
+                        try {
+                            // Prepare query
+                            let query = supabase
+                                .from('questions')
+                                .select('*, course_id(name)');
+                        
+                            // Add course filter if specified
+                            if (courseName) {
+                                query = query.eq('course_id.name', courseName);
+                            }
+
+                            // Fetch random question
+                            const { data, error } = await query
+                                .order('id', { ascending: false })  // Use a different approach for randomization
+                                .limit(1)
+                                .single();
+
+                            if (error) throw error;
+
+                            // Validate data before accessing
+                            if (!data || !data.course_id) {
+                                throw new Error('No question data found');
+                            }
+
+                            // Update modal content
+                            const modalBody = document.getElementById('randomQuestionModalBody');
+                            modalBody.innerHTML = `
+                                <div class="alert alert-info">
+                                    <strong>${data.course_id.name ? data.course_id.name + ' - ' : ''}随机问题</strong>
+                                </div>
+                                <p>${data.question}</p>
+                            `;
+
+                            // Set current random question ID
+                            currentRandomQuestionId = data.id;
+
+                            // Show the modal
+                            const randomQuestionModal = new bootstrap.Modal(document.getElementById('randomQuestionModal'));
+                            randomQuestionModal.show();
+
+                        } catch (err) {
+                            console.error('获取随机问题失败:', err);
+                        
+                            // Fallback method for randomization if the first method fails
+                            try {
+                                // First, get the course ID if a course name is provided
+                                let courseFilter = {};
+                                if (courseName) {
+                                    const { data: courseData, error: courseError } = await supabase
+                                        .from('courses')
+                                        .select('id')
+                                        .eq('name', courseName)
+                                        .single();
+
+                                    if (courseError) throw courseError;
+                                    courseFilter = { course_id: courseData.id };
+                                }
+
+                                // Fetch all questions
+                                const { data: allQuestions, error: fetchError } = await supabase
+                                    .from('questions')
+                                    .select('*, course_id(name)')
+                                    .match(courseFilter);
+
+                                if (fetchError) throw fetchError;
+
+                                if (allQuestions.length === 0) {
+                                    alert('没有找到相关课程的问题');
+                                    return;
+                                }
+
+                                // Manually randomize
+                                const randomIndex = Math.floor(Math.random() * allQuestions.length);
+                                const randomQuestion = allQuestions[randomIndex];
+
+                                // Validate randomQuestion before accessing
+                                if (!randomQuestion || !randomQuestion.course_id) {
+                                    throw new Error('No random question found');
+                                }
+
+                                // Update modal content
+                                const modalBody = document.getElementById('randomQuestionModalBody');
+                                modalBody.innerHTML = `
+                                    <div class="alert alert-info">
+                                        <strong>${randomQuestion.course_id.name ? randomQuestion.course_id.name + ' - ' : ''}随机问题</strong>
+                                    </div>
+                                    <p>${randomQuestion.question}</p>
+                                `;
+
+                                // Set current random question ID
+                                currentRandomQuestionId = randomQuestion.id;
+
+                                // Show the modal
+                                const randomQuestionModal = new bootstrap.Modal(document.getElementById('randomQuestionModal'));
+                                randomQuestionModal.show();
+
+                            } catch (fallbackError) {
+                                console.error('获取随机问题失败（备用方法）:', fallbackError);
+                                alert('获取随机问题失败：' + (fallbackError.message || '未知错误'));
+                            }
+                        }
+                    }
+
+                    // Add event listeners to course buttons
+                    document.querySelectorAll('.course-random-btn').forEach(btn => {
+                        btn.addEventListener('click', (event) => {
+                            const courseName = event.target.textContent.trim();
+                            showRandomQuestion(courseName);
+                        });
+                    });
+
+                    // Function to submit answer for the random question
+                    async function submitRandomQuestionAnswer() {
+                        // Get form values
+                        const answerTextarea = document.getElementById('answerTextarea');
+                        const difficultySelect = document.getElementById('difficultySelect');
+                        const scoreInput = document.getElementById('scoreInput');
+
+                        // Validate input
+                        if (!currentRandomQuestionId) {
+                            alert('请先选择一个随机问题');
+                            return;
+                        }
+
+                        if (!answerTextarea.value.trim()) {
+                            alert('请输入答案');
+                            return;
+                        }
+
+                        try {
+                            // Submit answer
+                            const { data: newAnswer, error } = await supabase
+                                .from('answer_list')
+                                .insert({
+                                    question_id: currentRandomQuestionId,
+                                    answer_text: answerTextarea.value,
+                                    user_id: null,
+                                    submission_time: new Date().toISOString(),
+                                    difficulty_level: difficultySelect.value,
+                                    evaluation_status: 'pending',
+                                    score: parseInt(scoreInput.value, 10)
+                                })
+                                .select()
+                                .single();
+
+                            if (error) throw error;
+
+                            // Close the modal
+                            const randomQuestionModal = bootstrap.Modal.getInstance(document.getElementById('randomQuestionModal'));
+                            randomQuestionModal.hide();
+
+                            // Refresh the answers table
+                            await fetchAnswers();
+
+                            // Show success message
+                            const alertContainer = document.createElement('div');
+                            alertContainer.innerHTML = `
+                                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                    答案提交成功！
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            `;
+                            document.querySelector('.container').insertBefore(alertContainer, document.querySelector('.container').firstChild);
+
+                            // Reset form
+                            answerTextarea.value = '';
+                            difficultySelect.selectedIndex = 1; // medium
+                            scoreInput.value = 5;
+
+                        } catch (err) {
+                            console.error('提交答案失败:', err);
+                            alert('提交答案失败：' + (err.message || '未知错误'));
+                        }
+                    }
+
+                    // Event listener for submit button
+                    const submitRandomQuestionAnswerBtn = document.getElementById('submitRandomQuestionAnswer');
+                    submitRandomQuestionAnswerBtn.addEventListener('click', submitRandomQuestionAnswer);
+
+                    // Event listeners
+                    const showRandomQuestionBtn = document.getElementById('showRandomQuestionBtn');
+                    showRandomQuestionBtn.addEventListener('click', showRandomQuestion);
+
+                    // Function to display total number of answers
+                    async function displayTotalAnswersCount() {
+                        try {
+                            // Fetch total count of answers
+                            const { count, error } = await supabase
+                                .from('answer-list')
+                                .select('*', { count: 'exact' });
+
+                            if (error) {
+                                console.error('Error fetching total answers count:', error);
+                                return;
+                            }
+
+                            // Create or update total answers count element
+                            let totalAnswersCountElement = document.getElementById('totalAnswersCount');
+                            if (!totalAnswersCountElement) {
+                                totalAnswersCountElement = document.createElement('div');
+                                totalAnswersCountElement.id = 'totalAnswersCount';
+                                totalAnswersCountElement.className = 'alert alert-info text-center mb-4';
+                                
+                                // Insert at the top of the page content
+                                const pageContent = document.querySelector('.container');
+                                pageContent.insertBefore(totalAnswersCountElement, pageContent.firstChild);
+                            }
+
+                            // Update the text with total answers count
+                            totalAnswersCountElement.innerHTML = `
+                                <strong>答案总数:</strong> ${count || 0} 
+                                <span class="badge bg-primary ms-2">全部答案</span>
+                            `;
+                        } catch (err) {
+                            console.error('Unexpected error:', err);
+                        }
+                    }
+
+                    // Function to display total number of questions
+                    async function displayTotalQuestionsCount() {
+                        try {
+                            // Fetch total count of questions
+                            const { count, error } = await supabase
+                                .from('questions')
+                                .select('*', { count: 'exact' });
+
+                            if (error) {
+                                console.error('Error fetching total questions count:', error);
+                                return;
+                            }
+
+                            // Create or update total questions count element
+                            let totalQuestionsCountElement = document.getElementById('totalQuestionsCount');
+                            if (!totalQuestionsCountElement) {
+                                totalQuestionsCountElement = document.createElement('div');
+                                totalQuestionsCountElement.id = 'totalQuestionsCount';
+                                totalQuestionsCountElement.className = 'alert alert-warning text-center mb-4';
+                                
+                                // Insert after the total answers count
+                                const totalAnswersCountElement = document.getElementById('totalAnswersCount');
+                                totalAnswersCountElement.insertAdjacentElement('afterend', totalQuestionsCountElement);
+                            }
+
+                            // Update the text with total questions count
+                            totalQuestionsCountElement.innerHTML = `
+                                <strong>问题总数:</strong> ${count || 0} 
+                                <span class="badge bg-warning text-dark ms-2">全部问题</span>
+                            `;
+                        } catch (err) {
+                            console.error('Unexpected error:', err);
+                        }
+                    }
+
+                    // Function to display total number of answer_list entries
+                    async function displayTotalAnswerListCount() {
+                        try {
+                            // Fetch total count of answer_list entries
+                            const { count, error } = await supabase
+                                .from('answer_list')
+                                .select('*', { count: 'exact' });
+
+                            if (error) {
+                                console.error('Error fetching total answer_list count:', error);
+                                return;
+                            }
+
+                            // Create or update total answer_list count element
+                            let totalAnswerListCountElement = document.getElementById('totalAnswerListCount');
+                            if (!totalAnswerListCountElement) {
+                                totalAnswerListCountElement = document.createElement('div');
+                                totalAnswerListCountElement.id = 'totalAnswerListCount';
+                                totalAnswerListCountElement.className = 'alert alert-success text-center mb-4';
+                                
+                                // Insert after the total questions count
+                                const totalQuestionsCountElement = document.getElementById('totalQuestionsCount');
+                                totalQuestionsCountElement.insertAdjacentElement('afterend', totalAnswerListCountElement);
+                            }
+
+                            // Update the text with total answer_list count
+                            totalAnswerListCountElement.innerHTML = `
+                                <strong>答案列表总数:</strong> ${count || 0} 
+                                <span class="badge bg-success text-white ms-2">全部答案列表</span>
+                            `;
+                        } catch (err) {
+                            console.error('Unexpected error:', err);
+                        }
+                    }
+
+                    // Function to display total number of today's entries
+                    async function displayTodaysCounts() {
+                        try {
+                            // Get today's date in the format used in Supabase (assuming created_at column)
+                            const today = new Date().toISOString().split('T')[0];
+
+                            // Fetch counts for different tables created today
+                            const [
+                                { count: answersCount, error: answersError },
+                                { count: questionsCount, error: questionsError },
+                                { count: answerListCount, error: answerListError }
+                            ] = await Promise.all([
+                                supabase
+                                    .from('answers')
+                                    .select('*', { count: 'exact' })
+                                    .gte('created_at', today),
+                                supabase
+                                    .from('questions')
+                                    .select('*', { count: 'exact' })
+                                    .gte('created_at', today),
+                                supabase
+                                    .from('answer_list')
+                                    .select('*', { count: 'exact' })
+                                    .gte('created_at', today)
+                            ]);
+
+                            // Handle potential errors
+                            if (answersError || questionsError || answerListError) {
+                                console.error('Error fetching today\'s counts:', {
+                                    answersError,
+                                    questionsError,
+                                    answerListError
+                                });
+                                return;
+                            }
+
+                            // Create or update today's counts element
+                            let todaysCountsElement = document.getElementById('todaysCounts');
+                            if (!todaysCountsElement) {
+                                todaysCountsElement = document.createElement('div');
+                                todaysCountsElement.id = 'todaysCounts';
+                                todaysCountsElement.className = 'alert alert-primary text-center mb-4';
+                                
+                                // Insert after the previous count elements
+                                const lastCountElement = document.getElementById('totalAnswerListCount');
+                                lastCountElement.insertAdjacentElement('afterend', todaysCountsElement);
+                            }
+
+                            // Update the text with today's counts
+                            todaysCountsElement.innerHTML = `
+                                <strong>今日数据统计:</strong>
+                                <span class="badge bg-info text-dark ms-2">答案: ${answersCount || 0}</span>
+                                <span class="badge bg-warning text-dark ms-2">问题: ${questionsCount || 0}</span>
+                                <span class="badge bg-success text-white ms-2">答案列表: ${answerListCount || 0}</span>
+                                <small class="d-block mt-1 text-muted">统计日期: ${today}</small>
+                            `;
+                        } catch (err) {
+                            console.error('Unexpected error in today\'s counts:', err);
+                        }
+                    }
+
+                    // Function to display course-specific data counts
+                    async function displayCourseSpecificCounts() {
+                        try {
+                            // Get today's date in the format used in Supabase (assuming created_at column)
+                            const today = new Date().toISOString().split('T')[0];
+
+                            // Fetch counts for different course-specific scenarios
+                            const [
+                                // Today's Geography (course_id = 3) questions
+                                { count: todayGeographyQuestionsCount, error: todayGeographyQuestionsError } = await supabase
+                                    .from('questions')
+                                    .select('*', { count: 'exact' })
+                                    .eq('course_id', 3)
+                                    .gte('created_at', today),
+                                
+                                // All-time Biology (course_id = 2) questions
+                                { count: allTimeBiologyQuestionsCount, error: allTimeBiologyQuestionsError } = await supabase
+                                    .from('questions')
+                                    .select('*', { count: 'exact' })
+                                    .eq('course_id', 2)
+                            ] = await Promise.all([
+                                supabase
+                                    .from('questions')
+                                    .select('*', { count: 'exact' })
+                                    .eq('course_id', 3)
+                                    .gte('created_at', today),
+                                supabase
+                                    .from('questions')
+                                    .select('*', { count: 'exact' })
+                                    .eq('course_id', 2)
+                            ]);
+
+                            // Handle potential errors
+                            if (todayGeographyQuestionsError || allTimeBiologyQuestionsError) {
+                                console.error('Error fetching course-specific counts:', {
+                                    todayGeographyQuestionsError,
+                                    allTimeBiologyQuestionsError
+                                });
+                                return;
+                            }
+
+                            // Create or update course-specific counts element
+                            let courseSpecificCountsElement = document.getElementById('courseSpecificCounts');
+                            if (!courseSpecificCountsElement) {
+                                courseSpecificCountsElement = document.createElement('div');
+                                courseSpecificCountsElement.id = 'courseSpecificCounts';
+                                courseSpecificCountsElement.className = 'alert alert-secondary text-center mb-4';
+                                
+                                // Insert after the previous count elements
+                                const lastCountElement = document.getElementById('todaysCounts');
+                                lastCountElement.insertAdjacentElement('afterend', courseSpecificCountsElement);
+                            }
+
+                            // Update the text with course-specific counts
+                            courseSpecificCountsElement.innerHTML = `
+                                <strong>课程特定数据统计:</strong>
+                                <span class="badge bg-warning text-dark ms-2">今日地理问题: ${todayGeographyQuestionsCount || 0}</span>
+                                <span class="badge bg-info text-dark ms-2">全部生物问题: ${allTimeBiologyQuestionsCount || 0}</span>
+                                <small class="d-block mt-1 text-muted">统计日期: ${today}</small>
+                            `;
+                        } catch (err) {
+                            console.error('Unexpected error in course-specific counts:', err);
+                        }
+                    }
+
+                    // Modify existing fetchAnswers function to call all count display functions
+                    const originalFetchAnswers = fetchAnswers;
+                    fetchAnswers = async (courseId = null, difficulty = null, evaluationStatus = null) => {
+                        try {
+                            const answers = await originalFetchAnswers(courseId, difficulty, evaluationStatus);
+                            
+                            // Call functions to display total counts
+                            await displayTotalAnswersCount();
+                            await displayTotalQuestionsCount();
+                            await displayTotalAnswerListCount();
+                            await displayTodaysCounts();
+                            await displayCourseSpecificCounts();
+
+                            return answers;
+                        } catch (err) {
+                            console.error('Error in modified fetchAnswers:', err);
+                            return [];
+                        }
+                    };
+
+                    // Initialize page
+                    async function initPage() {
+                        await populateCourseFilter();
+                        await applyFilters();
+                    }
+
+                    // Run initialization
+                    initPage();
+                } catch (initError) {
+                    handleSupabaseError('Failed to initialize Supabase client', initError);
+                }
+            } else {
+                handleSupabaseError('Supabase library not loaded correctly', new Error('Library missing'));
+            }
+        });
+    </script>
+</body>
+</html>

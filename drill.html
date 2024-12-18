@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识点反复练习 - Drill</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; }
+        .table-hover tbody tr:hover { background-color: #f1f3f5; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">
+            <span class="badge bg-primary">知识点反复练习</span>
+            <small class="text-muted">Drill</small>
+        </h1>
+
+        <!-- Filters -->
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <select id="courseFilter" class="form-select">
+                    <option value="">所有课程</option>
+                    <option value="1">历史</option>
+                    <option value="2">生物</option>
+                    <option value="3">地理</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <select id="difficultyFilter" class="form-select">
+                    <option value="">所有难度</option>
+                    <option value="easy">简单</option>
+                    <option value="medium">中等</option>
+                    <option value="hard">困难</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <button id="addDrillBtn" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> 添加新练习
+                </button>
+            </div>
+        </div>
+
+        <!-- Drill Table -->
+        <table id="drillTable" class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>课程</th>
+                    <th>练习标题</th>
+                    <th>练习描述</th>
+                    <th>难度</th>
+                    <th>创建时间</th>
+                    <th>问题ID</th>
+                    <th>问题名称</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="drillTableBody">
+                <!-- Table rows will be dynamically populated here -->
+            </tbody>
+        </table>
+
+        <!-- Total Count -->
+        <div id="totalDrillCount" class="alert alert-info text-center mt-3"></div>
+    </div>
+
+    <!-- Bootstrap and Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+        // Supabase configuration
+        const SUPABASE_URL = 'https://tkcrnfgnspvtzwbbvyfv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRrY3JuZmduc3B2dHp3YmJ2eWZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA5ODgwMTgsImV4cCI6MjA0NjU2NDAxOH0.o4kZY3X0XxcpM3OHO3yw7O3of2PPtXdQ4CBFgp3CMO8';
+
+        // Initialize Supabase client
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Course name mapping
+        function getCourseName(courseId) {
+            const courseNames = {
+                1: '历史',
+                2: '生物',
+                3: '地理',
+                4: '计算机'
+            };
+            return courseNames[courseId] || '未知课程';
+        }
+
+        // Difficulty text mapping
+        function getDifficultyText(difficulty) {
+            const difficultyMap = {
+                'easy': '简单',
+                'medium': '中等',
+                'hard': '困难'
+            };
+            return difficultyMap[difficulty] || difficulty;
+        }
+
+        // Fetch and populate drill table
+        async function fetchAndPopulateDrillTable() {
+            try {
+                // First, fetch drill entries
+                const { data: drillData, error: drillError } = await supabase
+                    .from('drill')
+                    .select('*')
+                    .order('id', { ascending: false });
+
+                if (drillError) throw drillError;
+
+                const tableBody = document.getElementById('drillTableBody');
+                tableBody.innerHTML = ''; // Clear existing rows
+
+                // Fetch all questions to create a lookup
+                const { data: questionsData, error: questionsError } = await supabase
+                    .from('questions')
+                    .select('*');
+
+                if (questionsError) throw questionsError;
+
+                // Create a questions lookup object
+                const questionsLookup = questionsData.reduce((acc, question) => {
+                    acc[question.id] = question;
+                    return acc;
+                }, {});
+
+                // Populate table
+                drillData.forEach(entry => {
+                    // Try to find associated question
+                    const associatedQuestion = questionsLookup[entry.question_id] || null;
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${entry.id || '未知'}</td>
+                        <td>${getCourseName(entry.course_id)}</td>
+                        <td>${entry.title || '未命名练习'}</td>
+                        <td>${entry.description || '暂无描述'}</td>
+                        <td>${getDifficultyText(entry.difficulty)}</td>
+                        <td>${entry.created_at ? new Date(entry.created_at).toLocaleString() : '未知时间'}</td>
+                        <td>${associatedQuestion ? associatedQuestion.id : '无'}</td>
+                        <td>${associatedQuestion ? associatedQuestion.question : '无关联问题'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="viewDrillDetails(${entry.id})">查看</button>
+                            <button class="btn btn-sm btn-warning" onclick="editDrillEntry(${entry.id})">编辑</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (err) {
+                console.error('获取练习列表失败:', err);
+                alert('获取练习列表时发生错误: ' + (err.message || JSON.stringify(err)));
+            }
+        }
+
+        // Call the function when the page loads
+        fetchAndPopulateDrillTable();
+    </script>
+</body>
+</html>

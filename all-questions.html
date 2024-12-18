@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>全部问题列表</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        body {
+            background-color: #f4f6f9;
+        }
+        #main-content {
+            margin-left: 0 !important; /* Explicitly remove any sidebar margin */
+            padding: 20px;
+        }
+        .question-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .question-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .badge-custom {
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+        .course-btn {
+            margin: 0 5px 10px 0;
+        }
+        .random-history-section {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+        }
+        #randomHistoryQuestion {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">问题列表</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="http://localhost:3000/course-statistics.html">课程统计</a>
+                    </li>
+                    <li class="nav-item">
+                        <button id="randomHistoryQuestionBtn" class="btn btn-outline-primary ms-2">
+                            随机历史问题
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button id="randomBiologyQuestionBtn" class="btn btn-outline-success ms-2">
+                            随机生物问题
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div id="main-content" class="container-fluid py-4">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="text-center mb-4">
+                    <i class="bi bi-list-ul me-2"></i>全部问题列表
+                </h1>
+                
+                <!-- Course Filter Buttons -->
+                <div class="text-center mb-4">
+                    <div class="btn-group flex-wrap" role="group" aria-label="课程筛选">
+                        <button id="btnAllCourses" class="btn btn-outline-primary course-btn active">
+                            <i class="bi bi-globe me-1"></i>全部课程
+                        </button>
+                        <button id="btnHistory" class="btn btn-outline-primary course-btn" data-course-id="1">
+                            <i class="bi bi-book-half me-1"></i>历史
+                        </button>
+                        <button id="btnBiology" class="btn btn-outline-success course-btn" data-course-id="2">
+                            <i class="bi bi-dna me-1"></i>生物
+                        </button>
+                        <button id="btnGeography" class="btn btn-outline-warning course-btn" data-course-id="3">
+                            <i class="bi bi-geo me-1"></i>地理
+                        </button>
+                        <button id="btnPolitics" class="btn btn-outline-danger course-btn" data-course-id="4">
+                            <i class="bi bi-building me-1"></i>政治
+                        </button>
+                        <button id="btnAnswerList" class="btn btn-outline-secondary course-btn">
+                            <i class="bi bi-list-check me-1"></i>答案列表
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Difficulty and Search Filters -->
+                <div class="row mb-3">
+                    <div class="col-md-6 offset-md-3">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" id="searchInput" class="form-control" placeholder="搜索问题...">
+                            <select id="difficultyFilter" class="form-select" style="max-width: 150px;">
+                                <option value="">所有难度</option>
+                                <option value="简单">简单</option>
+                                <option value="中等">中等</option>
+                                <option value="困难">困难</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Questions List -->
+        <div class="row" id="questionsContainer">
+            <!-- Questions will be dynamically populated here -->
+        </div>
+
+        <!-- Pagination -->
+        <div class="row mt-4">
+            <div class="col-12 d-flex justify-content-center">
+                <nav aria-label="问题分页">
+                    <ul id="paginationContainer" class="pagination">
+                        <!-- Pagination will be dynamically populated -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+        <div class="text-center mb-4">
+            <p id="totalQuestionCount" class="text-info"></p>
+            <p id="totalAnswersCount" class="text-info"></p>
+            <p id="historyQuestionCount" class="text-info"></p>
+            <p id="biologyQuestionCount" class="text-info"></p>
+            <p id="geographyQuestionCount" class="text-info"></p>
+            <p id="politicsQuestionCount" class="text-info"></p>
+        </div>
+    </div>
+
+    <!-- Random Question Modal -->
+    <div class="modal fade" id="randomQuestionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">随机问题</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="randomQuestionContent">
+                    <!-- Random question will be inserted here -->
+                </div>
+                <div class="modal-footer">
+                    <form id="answerForm" class="w-100">
+                        <div class="mb-3">
+                            <label for="answerTextarea" class="form-label">你的答案</label>
+                            <textarea class="form-control" id="answerTextarea" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="scoreInput" class="form-label">自评分数 (0-10)</label>
+                            <input type="number" class="form-control" id="scoreInput" min="0" max="10" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">提交答案</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Supabase client initialization -->
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+        
+        // Expose createClient globally to work with existing code
+        window.createClient = createClient;
+        window.SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL';
+        window.SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+    </script>
+
+    <script src="src/script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            const ITEMS_PER_PAGE = 6; // Number of questions per page
+
+            let currentPage = 1;
+            let totalQuestions = 0;
+            let currentCourseId = null;
+
+            // Course color mapping
+            const courseColors = {
+                1: 'primary',   // History
+                2: 'success',   // Biology
+                3: 'warning',   // Geography
+                4: 'danger'     // Politics
+            };
+
+            // Function to fetch questions
+            async function fetchQuestions() {
+                try {
+                    let query = supabaseClient
+                        .from('questions')
+                        .select('*', { count: 'exact' });
+
+                    // Apply course filter if a specific course is selected
+                    if (currentCourseId) {
+                        query = query.eq('course_id', currentCourseId);
+                    }
+
+                    const { data, error, count } = await query
+                        .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
+
+                    if (error) throw error;
+
+                    totalQuestions = count || 0;
+                    renderQuestions(data);
+                    renderPagination();
+                } catch (error) {
+                    console.error('获取问题失败:', error);
+                    displayErrorMessage('无法加载问题');
+                }
+            }
+
+            // Function to render questions
+            function renderQuestions(questions) {
+                const container = document.getElementById('questionsContainer');
+                container.innerHTML = ''; // Clear previous questions
+
+                if (questions.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-12 text-center">
+                            <p class="alert alert-info">暂无问题</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                questions.forEach(question => {
+                    // Parse the JSONB data
+                    const metadata = question.data || {};
+                    const difficulty = metadata.mastery_level || '未分类';
+                    const courseColor = courseColors[question.course_id] || 'secondary';
+
+                    const questionCard = document.createElement('div');
+                    questionCard.className = 'col-md-4 mb-4';
+                    questionCard.innerHTML = `
+                        <div class="card question-card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title mb-3">${question.question}</h5>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <span class="badge bg-${courseColor} badge-custom">
+                                            <i class="bi bi-book me-1"></i>课程 ${question.course_id}
+                                        </span>
+                                        <span class="badge bg-info badge-custom">
+                                            <i class="bi bi-trophy me-1"></i>${difficulty}
+                                        </span>
+                                    </div>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    ${question.answer ? '已提供参考答案' : '暂无参考答案'}
+                                </p>
+                            </div>
+                            <div class="card-footer bg-transparent border-0">
+                                <button class="btn btn-outline-primary btn-sm view-answer" data-question-id="${question.id}">
+                                    <i class="bi bi-eye me-1"></i>查看详情
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    container.appendChild(questionCard);
+                });
+            }
+
+            // Function to render pagination
+            function renderPagination() {
+                const paginationContainer = document.getElementById('paginationContainer');
+                paginationContainer.innerHTML = '';
+
+                const totalPages = Math.ceil(totalQuestions / ITEMS_PER_PAGE);
+
+                // Previous button
+                if (currentPage > 1) {
+                    const prevLi = document.createElement('li');
+                    prevLi.className = 'page-item';
+                    prevLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage - 1}">上一页</a>`;
+                    paginationContainer.appendChild(prevLi);
+                }
+
+                // Page numbers
+                for (let i = 1; i <= totalPages; i++) {
+                    const pageLi = document.createElement('li');
+                    pageLi.className = `page-item ${i === currentPage ? 'active' : ''}`;
+                    pageLi.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+                    paginationContainer.appendChild(pageLi);
+                }
+
+                // Next button
+                if (currentPage < totalPages) {
+                    const nextLi = document.createElement('li');
+                    nextLi.className = 'page-item';
+                    nextLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage + 1}">下一页</a>`;
+                    paginationContainer.appendChild(nextLi);
+                }
+
+                // Add event listeners to pagination
+                paginationContainer.addEventListener('click', (e) => {
+                    const pageLink = e.target.closest('.page-link');
+                    if (pageLink) {
+                        e.preventDefault();
+                        currentPage = parseInt(pageLink.dataset.page);
+                        fetchQuestions();
+                    }
+                });
+            }
+
+            // Function to get total questions per course
+            async function getTotalQuestionsPerCourse() {
+                try {
+                    // First, log all questions to understand the data
+                    const { data: allQuestions, error: questionsError } = await supabaseClient
+                        .from('questions')
+                        .select('id, question, course_id');
+
+                    if (questionsError) {
+                        console.error('Error fetching all questions:', questionsError);
+                    } else {
+                        console.log('All Questions:', allQuestions);
+                        
+                        // Count questions by course_id
+                        const courseIdCounts = allQuestions.reduce((acc, q) => {
+                            acc[q.course_id] = (acc[q.course_id] || 0) + 1;
+                            return acc;
+                        }, {});
+                        console.log('Questions by Course ID:', courseIdCounts);
+                    }
+
+                    // Directly count questions for each course
+                    const { data, error } = await supabaseClient
+                        .from('questions')
+                        .select('course_id', { count: 'exact' })
+                        .is('course_id', 'not.null')
+                        .groupBy('course_id');
+
+                    if (error) {
+                        console.error('Error fetching course totals:', error);
+                        return {};
+                    }
+
+                    // Hardcoded course mapping based on previous context
+                    const courseMap = {
+                        1: 'History',
+                        2: 'Biology',
+                        3: 'Geography',
+                        4: 'Politics'
+                    };
+
+                    // Transform data into a map of course totals
+                    const courseTotals = {};
+                    data.forEach(item => {
+                        const courseName = courseMap[item.course_id];
+                        if (courseName) {
+                            courseTotals[courseName] = (courseTotals[courseName] || 0) + 1;
+                        }
+                    });
+
+                    console.log('Course Totals:', courseTotals);
+
+                    return courseTotals;
+                } catch (err) {
+                    console.error('Unexpected error:', err);
+                    return {};
+                }
+            }
+
+            // Modify course button rendering to include total questions
+            async function updateCourseButtons() {
+                const courseTotals = await getTotalQuestionsPerCourse();
+                
+                document.querySelectorAll('.course-btn').forEach(button => {
+                    const courseName = button.textContent.trim().split('(')[0].trim();
+                    const totalQuestions = courseTotals[courseName] || 0;
+                    
+                    // Update button text to include total questions
+                    button.innerHTML = `${courseName} (${totalQuestions})`;
+                });
+            }
+
+            // Function to get Biology question count
+            async function getBiologyQuestionCount() {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('questions')
+                        .select('*', { count: 'exact' })
+                        .eq('course_id', 2);  // Biology course_id is 2
+
+                    if (error) {
+                        console.error('Error fetching Biology questions:', error);
+                        return 0;
+                    }
+
+                    return data.length;
+                } catch (err) {
+                    console.error('Unexpected error:', err);
+                    return 0;
+                }
+            }
+
+            // Function to get Politics question count
+            async function getPoliticsQuestionCount() {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('questions')
+                        .select('*', { count: 'exact' })
+                        .eq('course_id', 4);  // Politics course_id is 4
+
+                    if (error) {
+                        console.error('Error fetching Politics questions:', error);
+                        return 0;
+                    }
+
+                    return data.length;
+                } catch (err) {
+                    console.error('Unexpected error:', err);
+                    return 0;
+                }
+            }
+
+            // Function to get History question count
+            async function getHistoryQuestionCount() {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('questions')
+                        .select('*', { count: 'exact' })
+                        .eq('course_id', 1);  // History course_id is 1
+
+                    if (error) {
+                        console.error('Error fetching History questions:', error);
+                        return 0;
+                    }
+
+                    return data.length;
+                } catch (err) {
+                    console.error('Unexpected error:', err);
+                    return 0;
+                }
+            }
+
+            // Function to get Geography question count
+            async function getGeographyQuestionCount() {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('questions')
+                        .select('*', { count: 'exact' })
+                        .eq('course_id', 3);  // Geography course_id is 3
+
+                    if (error) {
+                        console.error('Error fetching Geography questions:', error);
+                        return 0;
+                    }
+
+                    return data.length;
+                } catch (err) {
+                    console.error('Unexpected error:', err);
+                    return 0;
+                }
+            }
+
+            // Function to get total questions for specified course IDs
+            async function getTotalQuestionsForCourses() {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('questions')
+                        .select('*', { count: 'exact' })
+                        .in('course_id', [1, 2, 3, 4]);  // History, Biology, Geography, Politics
+
+                    if (error) {
+                        console.error('Error fetching total questions:', error);
+                        return 0;
+                    }
+
+                    return data.length;
+                } catch (err) {
+                    console.error('Unexpected error:', err);
+                    return 0;
+                }
+            }
+
+            // Function to get total answers
+            async function getTotalAnswers() {
+                try {
+                    // Get total answers for all days
+                    const { data: allAnswersData, error: allAnswersError } = await supabaseClient
+                        .from('answer-list')
+                        .select('*', { count: 'exact' });
+
+                    console.log('All Answers Query:', {
+                        allAnswersData,
+                        allAnswersError,
+                        allAnswersLength: allAnswersData ? allAnswersData.length : 'N/A'
+                    });
+
+                    if (allAnswersError) {
+                        console.error('Error fetching total answers:', allAnswersError);
+                        return { allDays: 0, today: 0 };
+                    }
+
+                    // Get today's answers
+                    const today = new Date().toISOString().split('T')[0];
+                    const { data: todayAnswersData, error: todayAnswersError } = await supabaseClient
+                        .from('answer-list')
+                        .select('*', { count: 'exact' })
+                        .gte('created_at', today);
+
+                    console.log('Today\'s Answers Query:', {
+                        todayAnswersData,
+                        todayAnswersError,
+                        todayDate: today,
+                        todayAnswersLength: todayAnswersData ? todayAnswersData.length : 'N/A'
+                    });
+
+                    if (todayAnswersError) {
+                        console.error('Error fetching today\'s answers:', todayAnswersError);
+                        return { allDays: allAnswersData.length, today: 0 };
+                    }
+
+                    return {
+                        allDays: allAnswersData.length,
+                        today: todayAnswersData.length
+                    };
+                } catch (err) {
+                    console.error('Unexpected error:', err);
+                    return { allDays: 0, today: 0 };
+                }
+            }
+
+            // Function to display all course question counts
+            async function displayAllQuestionCounts() {
+                try {
+                    // Update course buttons first to show question counts
+                    await updateCourseButtons();
+
+                    // Total Questions for specified courses
+                    const totalQuestions = await getTotalQuestionsForCourses();
+                    const totalQuestionsElement = document.getElementById('totalQuestionCount');
+                    totalQuestionsElement.textContent = `全部课程问题总数: ${totalQuestions}`;
+                    totalQuestionsElement.style.display = 'block';
+
+                    // Total Answers
+                    const totalAnswers = await getTotalAnswers();
+                    const totalAnswersElement = document.getElementById('totalAnswersCount');
+                    totalAnswersElement.textContent = `全部答案总数: ${totalAnswers.allDays} (今日: ${totalAnswers.today})`;
+                    totalAnswersElement.style.display = 'block';
+
+                    // History Questions
+                    const historyQuestionCount = await getHistoryQuestionCount();
+                    const historyQuestionCountElement = document.getElementById('historyQuestionCount');
+                    historyQuestionCountElement.textContent = `历史问题总数: ${historyQuestionCount}`;
+                    historyQuestionCountElement.style.display = 'block';
+
+                    // Biology Questions
+                    const biologyQuestionCount = await getBiologyQuestionCount();
+                    const biologyQuestionCountElement = document.getElementById('biologyQuestionCount');
+                    biologyQuestionCountElement.textContent = `生物问题总数: ${biologyQuestionCount}`;
+                    biologyQuestionCountElement.style.display = 'block';
+
+                    // Geography Questions
+                    const geographyQuestionCount = await getGeographyQuestionCount();
+                    const geographyQuestionCountElement = document.getElementById('geographyQuestionCount');
+                    geographyQuestionCountElement.textContent = `地理问题总数: ${geographyQuestionCount}`;
+                    geographyQuestionCountElement.style.display = 'block';
+
+                    // Politics Questions
+                    const politicsQuestionCount = await getPoliticsQuestionCount();
+                    const politicsQuestionCountElement = document.getElementById('politicsQuestionCount');
+                    politicsQuestionCountElement.textContent = `政治问题总数: ${politicsQuestionCount}`;
+                    politicsQuestionCountElement.style.display = 'block';
+
+                } catch (err) {
+                    console.error('Error displaying question counts:', err);
+                }
+            }
+
+            // Function to fetch a random History question
+            async function fetchRandomHistoryQuestion() {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('questions')
+                        .select('*')
+                        .eq('course_id', 1)
+                        .order('id', { ascending: false });
+
+                    if (error) {
+                        console.error('Error fetching random History question:', error);
+                        return null;
+                    }
+
+                    // If questions exist, return a random question
+                    if (data && data.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * data.length);
+                        return data[randomIndex];
+                    }
+
+                    return null;
+                } catch (err) {
+                    console.error('Unexpected error:', err);
+                    return null;
+                }
+            }
+
+            // Event listener for random History question button
+            document.getElementById('randomHistoryQuestionBtn').addEventListener('click', async () => {
+                const randomQuestion = await fetchRandomHistoryQuestion();
+
+                if (randomQuestion) {
+                    // Populate the random question modal
+                    const modalContent = document.getElementById('randomQuestionContent');
+                    modalContent.innerHTML = `
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                历史问题
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">${randomQuestion.title}</h5>
+                                <p class="card-text">${randomQuestion.content}</p>
+                                <span class="badge bg-info">难度: ${randomQuestion.difficulty}</span>
+                            </div>
+                        </div>
+                    `;
+
+                    // Show the modal
+                    const randomQuestionModal = new bootstrap.Modal(document.getElementById('randomQuestionModal'));
+                    randomQuestionModal.show();
+                } else {
+                    alert('没有找到历史问题');
+                }
+            });
+
+            // Function to fetch a random Biology question
+            async function fetchRandomBiologyQuestion() {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('questions')
+                        .select('*')
+                        .eq('course_id', 2)
+                        .order('id', { ascending: false });
+
+                    if (error) {
+                        console.error('Error fetching random Biology question:', error);
+                        return null;
+                    }
+
+                    // If questions exist, return a random question
+                    if (data && data.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * data.length);
+                        return data[randomIndex];
+                    }
+
+                    return null;
+                } catch (err) {
+                    console.error('Unexpected error:', err);
+                    return null;
+                }
+            }
+
+            // Event listener for random Biology question button
+            document.getElementById('randomBiologyQuestionBtn').addEventListener('click', async () => {
+                const randomQuestion = await fetchRandomBiologyQuestion();
+
+                if (randomQuestion) {
+                    // Populate the random question modal
+                    const modalContent = document.getElementById('randomQuestionContent');
+                    modalContent.innerHTML = `
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                生物问题
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">${randomQuestion.title}</h5>
+                                <p class="card-text">${randomQuestion.content}</p>
+                                <span class="badge bg-info">难度: ${randomQuestion.difficulty}</span>
+                            </div>
+                        </div>
+                    `;
+
+                    // Show the modal
+                    const randomQuestionModal = new bootstrap.Modal(document.getElementById('randomQuestionModal'));
+                    randomQuestionModal.show();
+                } else {
+                    alert('没有找到生物问题');
+                }
+            });
+
+            // Initial load of questions
+            fetchQuestions();
+            
+            // Display question counts automatically
+            displayAllQuestionCounts();
+
+            // Course filter buttons event listeners
+            document.querySelectorAll('.course-btn').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    // Remove active class from all buttons
+                    document.querySelectorAll('.course-btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    e.currentTarget.classList.add('active');
+
+                    // Handle special buttons
+                    if (e.currentTarget.id === 'btnAllCourses') {
+                        currentCourseId = null;
+                    } else if (e.currentTarget.id === 'btnAnswerList') {
+                        window.location.href = 'answer-list.html';
+                        return;
+                    } else {
+                        currentCourseId = parseInt(e.currentTarget.dataset.courseId);
+                    }
+
+                    // Reset to first page
+                    currentPage = 1;
+                    fetchQuestions();
+                });
+            });
+        });
+    </script>
+</body>
+</html>

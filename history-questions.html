@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>历史问题列表</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f6f9;
+        }
+        .question-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .question-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .badge-custom {
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="text-center mb-4">
+                    <i class="bi bi-book-half me-2"></i>历史问题列表
+                </h1>
+                
+                <!-- Filters and Controls -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="btn-group" role="group">
+                        <button id="randomQuestionBtn" class="btn btn-primary">
+                            <i class="bi bi-shuffle me-1"></i>随机抽取问题
+                        </button>
+                    </div>
+                    
+                    <div class="d-flex align-items-center">
+                        <span class="me-2">筛选难度:</span>
+                        <select id="difficultyFilter" class="form-select form-select-sm" style="width: auto;">
+                            <option value="">全部难度</option>
+                            <option value="简单">简单</option>
+                            <option value="中等">中等</option>
+                            <option value="困难">困难</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Questions List -->
+        <div class="row" id="historyQuestionsContainer">
+            <!-- Questions will be dynamically populated here -->
+        </div>
+
+        <!-- Pagination -->
+        <div class="row mt-4">
+            <div class="col-12 d-flex justify-content-center">
+                <nav aria-label="问题分页">
+                    <ul id="paginationContainer" class="pagination">
+                        <!-- Pagination will be dynamically populated -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Random Question Modal -->
+    <div class="modal fade" id="randomQuestionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">随机历史问题</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="randomQuestionContent">
+                    <!-- Random question will be inserted here -->
+                </div>
+                <div class="modal-footer">
+                    <form id="answerForm" class="w-100">
+                        <div class="mb-3">
+                            <label for="answerTextarea" class="form-label">你的答案</label>
+                            <textarea class="form-control" id="answerTextarea" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="scoreInput" class="form-label">自评分数 (0-10)</label>
+                            <input type="number" class="form-control" id="scoreInput" min="0" max="10" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">提交答案</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+        
+        // Expose createClient globally to work with existing code
+        window.createClient = createClient;
+        window.SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL';
+        window.SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+    </script>
+    <script src="src/script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Use global variables for Supabase client initialization
+            const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            const ITEMS_PER_PAGE = 6; // Number of questions per page
+
+            let currentPage = 1;
+            let totalQuestions = 0;
+            let allHistoryQuestions = [];
+
+            // Function to fetch history questions
+            async function fetchHistoryQuestions() {
+                try {
+                    const { data, error, count } = await supabase
+                        .from('questions')
+                        .select('*', { count: 'exact' })
+                        .eq('course_id', 1)  // Explicitly filter for course_id 1
+                        .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
+
+                    if (error) throw error;
+
+                    totalQuestions = count || 0;
+                    allHistoryQuestions = data;
+
+                    renderQuestions(data);
+                    renderPagination();
+                } catch (error) {
+                    console.error('获取历史问题失败:', error);
+                    displayErrorMessage('无法加载历史问题');
+                }
+            }
+
+            // Function to render questions
+            function renderQuestions(questions) {
+                const container = document.getElementById('historyQuestionsContainer');
+                container.innerHTML = ''; // Clear previous questions
+
+                if (questions.length === 0) {
+                    container.innerHTML = `
+                        <div class="col-12 text-center">
+                            <p class="alert alert-info">暂无历史问题</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                questions.forEach(question => {
+                    // Parse the JSONB data
+                    const metadata = question.data || {};
+                    const difficulty = metadata.mastery_level || '未分类';
+
+                    const questionCard = document.createElement('div');
+                    questionCard.className = 'col-md-4 mb-4';
+                    questionCard.innerHTML = `
+                        <div class="card question-card h-100 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title mb-3">${question.question}</h5>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <span class="badge bg-info badge-custom">
+                                            <i class="bi bi-trophy me-1"></i>${difficulty}
+                                        </span>
+                                        <span class="badge bg-secondary badge-custom">
+                                            <i class="bi bi-list-ol me-1"></i>答案数: ${metadata.total_answers || 0}
+                                        </span>
+                                    </div>
+                                </div>
+                                <p class="card-text text-muted small">
+                                    ${question.answer ? '已提供参考答案' : '暂无参考答案'}
+                                </p>
+                            </div>
+                            <div class="card-footer bg-transparent border-0">
+                                <button class="btn btn-outline-primary btn-sm view-answer" data-question-id="${question.id}">
+                                    <i class="bi bi-eye me-1"></i>查看详情
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    container.appendChild(questionCard);
+                });
+            }
+
+            // Function to render pagination
+            function renderPagination() {
+                const paginationContainer = document.getElementById('paginationContainer');
+                paginationContainer.innerHTML = '';
+
+                const totalPages = Math.ceil(totalQuestions / ITEMS_PER_PAGE);
+
+                // Previous button
+                if (currentPage > 1) {
+                    const prevLi = document.createElement('li');
+                    prevLi.className = 'page-item';
+                    prevLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage - 1}">上一页</a>`;
+                    paginationContainer.appendChild(prevLi);
+                }
+
+                // Page numbers
+                for (let i = 1; i <= totalPages; i++) {
+                    const pageLi = document.createElement('li');
+                    pageLi.className = `page-item ${i === currentPage ? 'active' : ''}`;
+                    pageLi.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+                    paginationContainer.appendChild(pageLi);
+                }
+
+                // Next button
+                if (currentPage < totalPages) {
+                    const nextLi = document.createElement('li');
+                    nextLi.className = 'page-item';
+                    nextLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage + 1}">下一页</a>`;
+                    paginationContainer.appendChild(nextLi);
+                }
+
+                // Add event listeners to pagination
+                paginationContainer.addEventListener('click', (e) => {
+                    const pageLink = e.target.closest('.page-link');
+                    if (pageLink) {
+                        e.preventDefault();
+                        currentPage = parseInt(pageLink.dataset.page);
+                        fetchHistoryQuestions();
+                    }
+                });
+            }
+
+            // Function to get a random history question
+            async function getRandomHistoryQuestion() {
+                try {
+                    const { data, error } = await supabase
+                        .from('questions')
+                        .select('*')
+                        .eq('course_id', 1);  // Explicitly filter for course_id 1
+
+                    if (error) throw error;
+
+                    if (data.length === 0) {
+                        alert('没有找到历史问题');
+                        return;
+                    }
+
+                    const randomQuestion = data[Math.floor(Math.random() * data.length)];
+                    
+                    const randomQuestionModal = new bootstrap.Modal(document.getElementById('randomQuestionModal'));
+                    const randomQuestionContent = document.getElementById('randomQuestionContent');
+                    
+                    randomQuestionContent.innerHTML = `
+                        <h4 class="text-primary">${randomQuestion.question}</h4>
+                        <p class="text-muted">${randomQuestion.answer || '暂无答案'}</p>
+                    `;
+
+                    // Store current question ID for answer submission
+                    document.getElementById('answerForm').dataset.questionId = randomQuestion.id;
+
+                    randomQuestionModal.show();
+                } catch (error) {
+                    console.error('获取随机历史问题失败:', error);
+                    alert('获取随机问题失败：' + error.message);
+                }
+            }
+
+            // Function to submit answer
+            async function submitAnswer(event) {
+                event.preventDefault();
+                const questionId = event.target.dataset.questionId;
+                const answerText = document.getElementById('answerTextarea').value;
+                const score = document.getElementById('scoreInput').value;
+
+                try {
+                    const { data, error } = await supabase
+                        .from('answer_list')
+                        .insert({
+                            question_id: questionId,
+                            answer: answerText,
+                            score: score ? parseFloat(score) : null,
+                            answered_by: null  // Remove auth.uid() if not authenticated
+                        });
+
+                    if (error) throw error;
+
+                    alert('答案提交成功！');
+                    event.target.reset();
+                    
+                    // Close modal
+                    const randomQuestionModal = bootstrap.Modal.getInstance(document.getElementById('randomQuestionModal'));
+                    randomQuestionModal.hide();
+                } catch (error) {
+                    console.error('提交答案失败:', error);
+                    alert('提交答案失败：' + error.message);
+                }
+            }
+
+            // Difficulty Filter
+            document.getElementById('difficultyFilter').addEventListener('change', async (e) => {
+                const difficulty = e.target.value;
+                
+                try {
+                    let query = supabase
+                        .from('questions')
+                        .select('*', { count: 'exact' })
+                        .eq('course_id', 1);  // Explicitly filter for course_id 1
+
+                    if (difficulty) {
+                        query = query.contains('data', { mastery_level: difficulty });
+                    }
+
+                    const { data, count, error } = await query
+                        .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
+
+                    if (error) throw error;
+
+                    totalQuestions = count || 0;
+                    renderQuestions(data);
+                    renderPagination();
+                } catch (error) {
+                    console.error('筛选问题失败:', error);
+                    displayErrorMessage('无法筛选问题');
+                }
+            });
+
+            // Error display function
+            function displayErrorMessage(message) {
+                const container = document.getElementById('historyQuestionsContainer');
+                container.innerHTML = `
+                    <div class="col-12 text-center">
+                        <div class="alert alert-danger">
+                            <strong>错误:</strong> ${message}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Event Listeners
+            document.getElementById('randomQuestionBtn').addEventListener('click', getRandomHistoryQuestion);
+            document.getElementById('answerForm').addEventListener('submit', submitAnswer);
+
+            // Initial load of history questions
+            fetchHistoryQuestions();
+        });
+    </script>
+</body>
+</html>
